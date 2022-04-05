@@ -1,0 +1,5 @@
+yonghoon/data/
+*.log
+*.csv
+*.pt
+*.ckpt

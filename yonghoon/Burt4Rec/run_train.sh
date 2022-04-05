@@ -1,0 +1,1 @@
+python recommender/training.py --data_csv_path /opt/ml/recsys/data/train/rating_1.csv
