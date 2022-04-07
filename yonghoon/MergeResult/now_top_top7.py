@@ -4,7 +4,7 @@ import numpy as np
 
 # %%
 burt = pd.read_csv(r"D:\Workspace\Movie_Recommendation\output\burt4Rec_1000history_submission.csv")
-NewNF = pd.read_csv(r"D:\Workspace\Movie_Recommendation\output\NeuNF.csv")
+NewNF = pd.read_csv(r"D:\Workspace\level2-movie-recommendation-level2-recsys-12\yonghoon\output\RecVAE0.1581.csv")
 
 # %%
 topk = 7
@@ -36,7 +36,7 @@ for i in range(len(burt)):
 
 # %%
 pd.DataFrame(result, columns=["user", "item"]).to_csv(
-    "../output/Mix_Burt_Neu_No_duplicate_upgrade_submission.csv", index=False
+    "Mix_Burt_recVAE_submission.csv", index=False
 )
 
 # %%
