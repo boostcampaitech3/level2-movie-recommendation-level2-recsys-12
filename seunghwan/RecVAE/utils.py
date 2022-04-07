@@ -8,6 +8,9 @@ def random_seed(seed):
     torch.random.manual_seed(seed)
     random.seed(seed)
 
+def sparse2Tensor(self, data) :
+    return torch.FloatTensor(data.toarray())
+
 def ndcg(recon_batch, target_batch, k) :
     
     
