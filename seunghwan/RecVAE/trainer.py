@@ -1,17 +1,77 @@
-class Trainer() :
-    def __init__(self, model, optimizer, criterion, batch_size, epochs,
-                datasets : dict,
-                annealing_steps, anneal_cap,
-                ndcg_k, recall_k,
-                output_path, model_name, device,
-                user_encoder, item_encoder) :
+import torch
+import numpy as np
+from utils import ndcg, recall
+from copy import deepcopy
+
+
+def generate(batch_size, device, data_in, data_out=None, shuffle=False, samples_perc_per_epoch=1):
+    assert 0 < samples_perc_per_epoch <= 1
+    
+    total_samples = data_in.shape[0]
+    samples_per_epoch = int(total_samples * samples_perc_per_epoch)
+    
+    if shuffle:
+        idxlist = np.arange(total_samples)
+        np.random.shuffle(idxlist)
+        idxlist = idxlist[:samples_per_epoch]
+    else:
+        idxlist = np.arange(samples_per_epoch)
+    
+    for st_idx in range(0, samples_per_epoch, batch_size):
+        end_idx = min(st_idx + batch_size, samples_per_epoch)
+        idx = idxlist[st_idx:end_idx]
+
+        yield Batch(device, idx, data_in, data_out)
+
+class Batch:
+    def __init__(self, device, idx, data_in, data_out=None):
+        self._device = device
+        self._idx = idx
+        self._data_in = data_in
+        self._data_out = data_out
+    
+    def get_idx(self):
+        return self._idx
+    
+    def get_idx_to_dev(self):
+        return torch.LongTensor(self.get_idx()).to(self._device)
         
-        # basic learning and evaluating parameter
+    def get_ratings(self, is_out=False):
+        data = self._data_out if is_out else self._data_in
+        return data[self._idx]
+    
+    def get_ratings_to_dev(self, is_out=False):
+        return torch.Tensor(
+            self.get_ratings(is_out).toarray()
+        ).to(self._device)
+
+class Trainer() :
+    def __init__(self, model, model_best, optimizer_encoder, optimizer_decoder,
+                 batch_size, epochs, en_epochs, de_epochs, not_alter, beta, gamma, dropout_ratio,
+                 ndcg_k, recall_k,
+                 datasets,
+                 output_path, model_name, device, verbose,
+                 user_encoder, item_encoder) :
+        
+        # model and optimizer
         self.model = model
-        self.optimizer = optimizer
-        self.criterion = criterion
+        self.model_best = model_best 
+        self.optimizer_encoder = optimizer_encoder
+        self.optimizer_decoder = optimizer_decoder
+
+        # basic learning and evaluating parameter
         self.batch_size = batch_size
         self.epochs = epochs
+        self.en_epochs = en_epochs
+        self.de_epochs = de_epochs
+        self.not_alter = not_alter
+        self.beta = beta
+        self.gamma = gamma
+        self.dropout_ratio = dropout_ratio
+        
+        # metric pararmeter
+        self.ndcg_k = ndcg_k
+        self.recall_k = recall_k
         
         # datasets
         self.datasets = datasets
@@ -20,194 +80,132 @@ class Trainer() :
         self.test_input, self.test_target = self.datasets['test_data']
         self.inference_data = self.datasets['inference_data']
         
-        # annealing parameter
-        self.annealing_steps = annealing_steps
-        self.anneal_cap = anneal_cap
-        self.update_count = 0
-        
-        # metric pararmeter
-        self.ndcg_k = ndcg_k
-        self.recall_k = recall_k
-        
         # etc
         self.output_path = output_path
         self.model_name = model_name
         self.device = device
+        self.verbose = verbose
         
         # result
-        self.train_loss_list = []
-        self.eval_loss_list = []
-        self.ndcg_list = []
-        self.recall_list = []
+        self.train_ndcg_list = []
+        self.eval_ndcg_list = []
         
         # inference
         self.user_encoder = user_encoder
-        self.item_encoder = item_encoder 
+        self.item_encoder = item_encoder
         
-    def train(self, verbose=True) :
+        self.learning_kwargs = {
+            'model' : self.model,
+            'train_data' : self.train_data,
+            'batch_size' : self.batch_size,
+            'beta' : self.beta,
+            'gamma' : self.gamma
+        }
         
-        self.update_count = 0
+    def run(self) :
         
-        if not os.path.exists(self.output_path):
-            os.mkdir(self.output_path)
-            
         best_ndcg = 0
-        best_recall = 0
         
-        epoch_start = torch.cuda.Event(enable_timing=True)
-        epoch_end = torch.cuda.Event(enable_timing=True)
+        metrics = self._metrics_loader('ndcg')
+            
+        for epoch in range(self.epochs):
+            if self.not_alter :
+                self._train(opts=[self.optimizer_encoder, self.optimizer_decoder], n_epochs=1, dropout_rate=self.dropout_ratio, **self.learning_kwargs)
+            else :
+                self._train(opts=[self.optimizer_encoder], epochs=self.en_epochs, dropout_rate=self.dropout_ratio, **self.learning_kwargs)
+                self.model.update_prior()
+                self._train(opts=[self.optimizer_decoder], epochs=self.de_epochs, dropout_rate=0, **self.learning_kwargs)
         
-        for epoch in range(self.epochs) :
+            self.train_ndcg_list.append(
+                self._eval(model=self.model, data_in=self.train_data, data_out=self.train_data, 
+                           samples_perc_per_epoch=0.01, metrics=metrics, batch_size=self.batch_size)[0]
+            )
+            self.eval_ndcg_list.append(
+                self._eval(model=self.model, data_in=self.valid_input, data_out=self.valid_target, 
+                           samples_perc_per_epoch=1, metrics=metrics, batch_size=self.batch_size)[0]
+            )
             
-            epoch_start.record()
+            if self.eval_ndcg_list[-1] > best_ndcg :
+                best_ndcg = self.eval_ndcg_list[-1]
+                self.model_best.load_state_dict(deepcopy(self.model.state_dict()))
             
-            train_loss = self._train(self.train_data)
-            eval_loss, ndcg, recall = self._eval(self.model, self.valid_input, self.valid_target)
+            print(f'[epoch {epoch}/{self.epochs} || valid_ndcg@{self.ndcg_k} : {self.eval_ndcg_list[-1]:.4f} | ' +
+                    f'best valid_ndcg : {best_ndcg:.4f} | train ndcg@{self.ndcg_k} : {self.train_ndcg_list[-1]:.4f}')
             
-            epoch_end.record()
-            torch.cuda.synchronize()
-            time = epoch_start.elapsed_time(epoch_end)/1000
             
-            self.train_loss_list.append(train_loss)
-            self.eval_loss_list.append(eval_loss)
-            self.ndcg_list.append(ndcg)
-            self.recall_list.append(recall)
+    def test(self) :
+        metrics = self._metrics_loader('ndcg', 'recall')
+        final_score = self._eval(model=self.model_best, data_in=self.test_input, data_out=self.test_target, 
+                                 samples_perc_per_epoch=1, metrics=metrics, batch_size=self.batch_size)
+        for metric, score in zip(metrics, final_score) :
+            print(f"{metric['metric'].__name__}@{metric['k']}:\t{score:.4f}")
             
-            if verbose == True :
-                print(f'[{epoch+1}/{self.epochs}] train_loss : {train_loss:.4f} || eval_loss : {eval_loss:.4f} || NDCG : {ndcg:.4f} || RECALL : {recall:.4f} || time : {time:.2f}s')
             
-            if best_ndcg < ndcg :
-                best_ndcg = ndcg
-                self.ndcg_best_model = self.model
-                torch.save(self.ndcg_best_model, os.path.join(self.output_path, f'Best_NDCG({self.ndcg_k})_{self.model_name}.pt'))
-                print(f'Save(NDCG : {best_ndcg:.4f}) || epoch : {epoch})')
-            
-            if best_recall < recall :
-                best_recall = recall
-                self.recall_best_model = self.model
-                torch.save(self.recall_best_model, os.path.join(self.output_path, f'Best_RECALL({self.recall_k})_{self.model_name}.pt'))
-                print(f'Save(RECALL : {best_recall:.4f} || epoch : {epoch})')
-    
-    def test(self, metric) :
-        if metric == 'recall':
-            loss, ndcg, recall = self._eval(self.recall_best_model, self.test_input, self.test_target)
-            print(f'[test] loss : {loss:.4f} || ndcg : {ndcg:.4f} || recall : {recall:.4f}')
-        if metric == 'ndcg':
-            loss, ndcg, recall = self._eval(self.ndcg_best_model, self.test_input, self.test_target)
-            print(f'[test] loss : {loss:.4f} || ndcg : {ndcg:.4f} || recall : {recall:.4f}')
-            
-    
-    ################################################# inner function ##################################################################
-    def _train(self, input_data) :
-        
-        total_length = input_data.shape[0]
-        shuffled_idx = list(range(total_length))
-        n_batches = np.ceil(total_length / self.batch_size)
-        np.random.shuffle(shuffled_idx)
-        
-        self.model.train()
-        train_loss = 0.0
+    ##########################################inner functions###########################################
+    def _train(self, model, opts, train_data, batch_size, epochs, beta, gamma, dropout_rate) :
+        model.train()
+        for epoch in range(epochs) :
+            for batch in generate(batch_size=batch_size, 
+                                  device=self.device, 
+                                  data_in=train_data, 
+                                  shuffle=True):
+                ratings = batch.get_ratings_to_dev()
 
-        for start_idx in range(0, total_length, self.batch_size):
-            end_index = min(start_idx + self.batch_size, total_length)
+                for optimizer in opts:
+                    optimizer.zero_grad()
+                    
+                _, loss = model(ratings, beta=beta, gamma=gamma, dropout_rate=dropout_rate)
+                loss.backward()
+                
+                for optimizer in opts:
+                    optimizer.step()
 
+    def _eval(self, model, data_in, data_out, metrics, samples_perc_per_epoch=1, batch_size=500):
+        metrics = deepcopy(metrics)
+        model.eval()
+        
+        for m in metrics:
+            m['score'] = []
+        
+        for batch in generate(batch_size=batch_size,
+                            device=self.device,
+                            data_in=data_in,
+                            data_out=data_out,
+                            samples_perc_per_epoch=samples_perc_per_epoch
+                            ):
             
-            input_batch = input_data[shuffled_idx[start_idx:end_index]]
-            input_batch = self._sparse2Tensor(input_batch).to(self.device)
+            ratings_in = batch.get_ratings_to_dev()
+            ratings_out = batch.get_ratings(is_out=True)
+        
+            ratings_pred = model(ratings_in, calculate_loss=False).cpu().detach().numpy()
             
-            if self.annealing_steps > 0 : anneal = min(self.anneal_cap, 1. * self.update_count / self.annealing_steps)
-            else : anneal = self.anneal_cap
-            
-            ###################TRAIN##################
-            self.optimizer.zero_grad()
-            recon_batch, mu, logvar = self.model(input_batch)
-            loss = self.criterion(recon_batch, input_batch, mu, logvar, anneal)
-            loss.backward()
-            train_loss += loss.item()
-            self.update_count += 1
-            self.optimizer.step()
-            ##########################################
+            if not (data_in is data_out):
+                ratings_pred[batch.get_ratings().nonzero()] = -np.inf
+                
+            for m in metrics:
+                m['score'].append(m['metric'](ratings_pred, ratings_out, k=m['k']))
 
-        epoch_loss = train_loss / n_batches
-        
-        return epoch_loss
-    
-    def _eval(self, model, input_data, target_data) :
-        
-        total_length = input_data.shape[0]
-        eval_idx = list(range(total_length)) # == n_heldout
-        n_batches = np.ceil(total_length / self.batch_size)
-
-        ndcg_list = []
-        recall_list = []
-    
-        self.model.eval()
-        eval_loss = 0.0
-        
-        with torch.no_grad():
-            for start_idx in range(0, total_length, self.batch_size):
-
-                end_idx = min(start_idx + self.batch_size, total_length)
-                idx = eval_idx[start_idx:end_idx]
-                
-                input_batch = input_data[idx]
-                input_batch = self._sparse2Tensor(input_batch).to(self.device)
-                target_batch = target_data[idx]
-                
-                anneal = min(self.anneal_cap, 1. * self.update_count / (self.annealing_steps + 1e-10))
-                
-                ######################EVALUATE#############################
-                recon_batch, mu, logvar = model(input_batch)
-                loss = self.criterion(recon_batch, input_batch, mu, logvar, anneal)
-                eval_loss += loss.item()
-                
-                self.input_batch = input_batch # 확인용
-                self.recon_batch = recon_batch # 확인용
-                
-                recon_batch[torch.nonzero(input_batch, as_tuple=True)] = -np.inf
-                ndcg = self._get_NDCG(recon_batch, target_batch, self.ndcg_k)
-                recall = self._get_RECALL(recon_batch, target_batch, self.recall_k)
-                
-                ndcg_list.extend(ndcg)
-                recall_list.extend(recall)
-                ###########################################################
+        for m in metrics:
+            m['score'] = np.concatenate(m['score']).mean()
             
-        ndcg = np.mean(ndcg_list)
-        recall = np.mean(recall_list)
-        eval_loss /= n_batches
-        
-        return eval_loss, ndcg, recall
-        
-    def _sparse2Tensor(self, data) :
-        
-        return torch.FloatTensor(data.toarray())
+        return [x['score'] for x in metrics]
     
-    def _get_NDCG(self, recon_batch, target_batch, k) :
-        
-        recon_batch = recon_batch.cpu().numpy()
-        
-        batch_users = recon_batch.shape[0]
-        idx_topk_part = bn.argpartition(-recon_batch, k, axis=1)
-        topk_part = recon_batch[np.arange(batch_users)[:, np.newaxis], idx_topk_part[:,:k]]
-        idx_part = np.argsort(-topk_part, axis=1)
-        idx_topk = idx_topk_part[np.arange(batch_users)[:, np.newaxis], idx_part]
-        tp = 1. / np.log2(np.arange(2, k+2))
-        DCG = (target_batch[np.arange(batch_users)[:, np.newaxis], idx_topk].toarray() * tp).sum(axis=1)
-        IDCG = np.array([(tp[:min(n, k)]).sum() for n in target_batch.getnnz(axis=1)])
-        
-        return DCG / IDCG
     
-    def _get_RECALL(self, recon_batch, target_batch, k):
-        
-        recon_batch = recon_batch.cpu().numpy()
-        
-        batch_users = recon_batch.shape[0]
-        idx = bn.argpartition(-recon_batch, k, axis=1)
-        prediction = np.zeros_like(recon_batch, dtype=bool)
-        prediction[np.arange(batch_users)[:, np.newaxis], idx[:, :k]] = True
-        
-        real = (target_batch > 0).toarray()
-        hit = (np.logical_and(prediction, real).sum(axis=1)).astype(np.float32)
-        recall = hit / np.minimum(k, real.sum(axis=1))
-        
-        return recall
+    
+    def _metrics_loader(self, *metrics_name) :
+        metrics = list()
+        for metric_name in metrics_name :
+            
+            if metric_name == 'ndcg' :
+                metric = dict()
+                metric['metric'] = ndcg
+                metric['k'] = self.ndcg_k
+                metrics.append(metric)
+            
+            if metric_name == 'recall' :
+                metric = dict()
+                metric['metric'] = recall
+                metric['k'] = self.recall_k
+                metrics.append(metric)
+                
+        return metrics

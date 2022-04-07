@@ -14,7 +14,7 @@ def log_norm_pdf(x, mu, logvar):
 
 
 class CompositePrior(nn.Module):
-    def __init__(self, hidden_dim, latent_dim, input_dim, mixture_weights=[3/20, 3/4, 1/10]):
+    def __init__(self, hidden_dim, latent_dim, input_dim, mixture_weights):
         super(CompositePrior, self).__init__()
         
         self.mixture_weights = mixture_weights
@@ -78,11 +78,11 @@ class Encoder(nn.Module):
     
 
 class VAE(nn.Module):
-    def __init__(self, hidden_dim, latent_dim, input_dim):
+    def __init__(self, hidden_dim, latent_dim, input_dim, mixture_weights):
         super(VAE, self).__init__()
 
         self.encoder = Encoder(hidden_dim, latent_dim, input_dim)
-        self.prior = CompositePrior(hidden_dim, latent_dim, input_dim)
+        self.prior = CompositePrior(hidden_dim, latent_dim, input_dim, mixture_weights)
         self.decoder = nn.Linear(latent_dim, input_dim)
         
     def reparameterize(self, mu, logvar):

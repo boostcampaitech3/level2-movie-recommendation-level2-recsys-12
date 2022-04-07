@@ -1,29 +1,43 @@
+import os
 import pandas as pd
 import numpy as np
 from scipy import sparse
-from sklearn.preprocessing import LabelEncoder
-import argparse
-
-import os
-import random
-import warnings
-
 from copy import deepcopy
 
-warnings.filterwarnings('ignore')
-
 class VAEData():
-    def __init__(self, data_dir : str, args):
-
+    def __init__(self, data_dir : str, dir_preprocessing : str,
+                 min_user_cnt : int, min_movie_cnt : int, 
+                 n_heldout : int, 
+                 target_prop : float,
+                 min_movie_to_split : int):
+        '''
+        data_dir : csv file 경로
+        min_user_cnt : 영화 당 최소 유저 수, 5 = 영화를 본 유저 수가 5명 미만이면 제외
+        min_movie_cnt : 유저 당 최소 영화 수, 5 = 영화를 5개 미만으로 본 유저는 제외
+        n_heldout : evaluation user 및 test user의 수
+        target_prop : 사용자가 본 영화중 target으로 사용할 영화의 비율
+        min_movie_to_split : input, target split을 하기 위한 최소 영화 수
+        '''
+        # # if preprocessing
+        # try :
+        #     self.data = pd.read_csv(os.path.join(dir_preprocessing, 'data.csv'))
+        #     self.train_input = pd.read_csv(os.path.join(dir_preprocessing, 'train_input.csv'))
+        #     self.valid_input = pd.read_csv(os.path.join(dir_preprocessing, 'valid_input.csv'))    
+        #     self.valid_target = pd.read_csv(os.path.join(dir_preprocessing, 'valid_target.csv'))
+        #     self.test_input = pd.read_csv(os.path.join(dir_preprocessing, 'test_input.csv'))
+        #     self.test_target = pd.read_csv(os.path.join(dir_preprocessing, 'test_target.csv'))
+        # except :
+        
         # load data
         self.data_dir = data_dir
+        self.dir_preprocessing = dir_preprocessing
         self.raw_data = pd.read_csv(self.data_dir, header=0)
         
         # filtering data
-        self.min_user_cnt = args.min_user_cnt
-        self.min_movie_cnt = args.min_movie_cnt
+        self.min_user_cnt = min_user_cnt
+        self.min_movie_cnt = min_movie_cnt
         self.data, self.n_users_by_movie, self.n_movies_by_user = self._filter_triplets(self.raw_data)
-        
+
         # unique users and movies
         self.users = np.unique(self.data['user'])
         self.n_users = len(self.users)
@@ -31,17 +45,19 @@ class VAEData():
         self.n_movies = len(self.movies)
         
         # user split and get data
-        self.n_heldout = args.n_heldout
+        self.n_heldout = n_heldout
         self.train_users, self.valid_users, self.test_users = self._user_split()
         self.train_data, self.valid_data, self.test_data = self._get_data()
         
         # input_target split
-        self.target_prop = args.target_prop
-        self.min_movie_to_split = args.min_movie_to_split
+        self.target_prop = target_prop
+        self.min_movie_to_split = min_movie_to_split
         self.train_input = deepcopy(self.train_data)
         self.valid_input, self.valid_target = self._input_target_split(self.valid_data)
         self.test_input, self.test_target = self._input_target_split(self.test_data)
         
+        # self._save()
+
         # label encode
         for data in [self.train_input, self.valid_input, self.valid_target, self.test_input, self.test_target]:
             self.user_encoder, self.item_encoder = self._label_encode(data)
@@ -55,14 +71,19 @@ class VAEData():
         self.inference_matrix = self._make_inference_dataset()
         
         self.datasets = {'train_data' : self.train_matrix,
-                        'valid_data' : (self.valid_matrix_input, self.valid_matrix_target),
-                        'test_data' : (self.test_matrix_input, self.valid_matrix_target),
-                        'inference_data' : self.inference_matrix}
-        
-
+                         'valid_data' : (self.valid_matrix_input, self.valid_matrix_target),
+                         'test_data' : (self.test_matrix_input, self.valid_matrix_target),
+                         'inference_data' : self.inference_matrix}
         
         print('complete!')
         
+    def _save(self):
+        for data,name in zip([self.data, self.train_input, self.valid_input, self.valid_target, self.test_input, self.test_target],
+                             ['data', 'train_input', 'valid_input', 'valid_target', 'test_input', 'test_target']):
+            if not os.path.exists(self.dir_preprocessing):
+                os.mkdir(self.dir_preprocessing)
+            data.to_csv(os.path.join(self.dir_preprocessing, f'{name}.csv'), index=False)
+      
     def _filter_triplets(self, raw_data) :
 
         print('filter min...')
@@ -85,7 +106,6 @@ class VAEData():
     def _user_split(self):
         
         print('user split...')
-        np.random.seed(98765)
         i_shuffle = np.random.permutation(self.users.size)
         self.users = self.users[i_shuffle]
         
@@ -115,8 +135,6 @@ class VAEData():
         data_grby_user = data.groupby('user')
         input_list, target_list = list(), list()
         
-        np.random.seed(98765)
-
         for _, group in data_grby_user :
             
             n_movies_of_user = len(group)
@@ -158,8 +176,8 @@ class VAEData():
             n_users = self.train_input['user'].max() + 1
             rows, cols = self.train_input['user'], self.train_input['item']
             matrix = sparse.csr_matrix((np.ones_like(rows), (rows, cols)), 
-                                    dtype='float64',
-                                    shape=(n_users, self.n_movies))
+                                     dtype='float64',
+                                     shape=(n_users, self.n_movies))
             return matrix
         
         if data_type == 'valid':
@@ -177,12 +195,12 @@ class VAEData():
         rows_target, cols_target = target['user'] - start_idx, target['item']
         
         matrix_input = sparse.csr_matrix((np.ones_like(rows_input), (rows_input, cols_input)), 
-                                        dtype='float64',
-                                        shape=(end_idx - start_idx + 1, self.n_movies))
+                                         dtype='float64',
+                                         shape=(end_idx - start_idx + 1, self.n_movies))
         
         matrix_target = sparse.csr_matrix((np.ones_like(rows_target),
-                                        (rows_target, cols_target)), dtype='float64',
-                                        shape=(end_idx - start_idx + 1, self.n_movies))
+                                       (rows_target, cols_target)), dtype='float64',
+                                       shape=(end_idx - start_idx + 1, self.n_movies))
         
         return matrix_input, matrix_target
     
@@ -193,8 +211,8 @@ class VAEData():
         n_users = self.n_users
         rows, cols = data['user'], data['item']    
         matrix = sparse.csr_matrix((np.ones_like(rows), (rows, cols)), 
-                                dtype='float64',
-                                shape=(n_users, self.n_movies))
+                                 dtype='float64',
+                                 shape=(n_users, self.n_movies))
         
         self.inference_data = data
         return matrix
