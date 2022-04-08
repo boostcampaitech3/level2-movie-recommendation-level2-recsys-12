@@ -99,10 +99,12 @@ def to_sequence(dict_train, dict_test, sequence_length, target_length):
         Parameters
 
         Args:
-            dict_pos_sequence (dict): user가 본 영화를 timestamp 기준으로 정렬한 dictionary
+            dict_train (dict): user가 본 영화를 timestamp 기준으로 정렬한 train dictionary
+            dict_test (dict): user가 본 영화를 timestamp 기준으로 정렬한 test dictionary. 즉, target이다.
             sequence_length (int): L의 값으로, 참고할 item의 수
             target_length (int): T의 값으로, 예측할 item의 수
         """
+        print('make sequences...')
 
         max_sequence_length = sequence_length + target_length
 
@@ -129,10 +131,17 @@ def to_sequence(dict_train, dict_test, sequence_length, target_length):
         train_meta_sequences = SequenceData(sequence_users, sequences, sequences_targets)
         test_meta_sequences = SequenceData(test_users, test_sequences, test_sequences_targets)
 
+        print('done!')
         return train_meta_sequences, test_meta_sequences
 
 
 def _sliding_window(list_items, window_size, step_size=1):
+    """
+    Args:
+        list_items (list): 해당 list를 기반으로 크기가 window_size인 subsequences를 만든다.
+        window_size (int): L+T와 같은 값이다.
+        setp_size (int): step_size만큼 건너뛰어서 subsequences를 만든다.
+    """
     if len(list_items) - window_size >= 0:
         for i in range(len(list_items), 0, -step_size):
             if i - window_size >= 0:
@@ -159,6 +168,12 @@ class SequenceData():
 
 
 def to_sequence_inference(dict_all, sequence_length):
+    """
+    Args:
+        dict_all (dict): 추론할 때 모든 데이터에서 마지막 L만큼만 사용한다.
+        sequence_length (int): 
+    """
+    print('make sequences...')
     users = list()
     sequences = list()
     for user in dict_all.keys():
@@ -166,6 +181,7 @@ def to_sequence_inference(dict_all, sequence_length):
         sequences.append(dict_all[user][-sequence_length:])
     
     data_meta = SequenceData(users, sequences)
+    print('done!')
 
     return data_meta
 

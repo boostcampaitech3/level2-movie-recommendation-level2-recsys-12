@@ -23,8 +23,10 @@ class Trainer():
         epochs,
         dict_negative_samples,
         num_neg_samples,
+        topK,
         device,
         output,
+        save_file_name,
         ):
         """
         Args:
@@ -46,8 +48,8 @@ class Trainer():
         self.recall_list = list()
         self.ndcg_list = list()
 
-        self.model_name = 'Caser'
-        self.topK = 10
+        self.save_file_name = save_file_name
+        self.topK = topK
     
     def fit(self):
         best_ndcg = 0
@@ -55,6 +57,7 @@ class Trainer():
         epoch_end = torch.cuda.Event(enable_timing=True)
 
         self.model.to(device)
+        print('start training...')
         for epoch in range(self.epochs):
             # 시작 시간 기록
             epoch_start.record()
@@ -78,8 +81,10 @@ class Trainer():
 
             if best_ndcg < avg_ndcg:
                 best_ndcg = avg_ndcg
-                torch.save(self.model.state_dict(), os.path.join(self.output, f'best_NDCG_{self.model_name}.pt'))
+                torch.save(self.model.state_dict(), os.path.join(self.output, self.save_file_name))
                 print(f'save ndcg: {best_ndcg:.4f}')
+        
+        print('done!')
 
 
     def _train(self):
@@ -178,31 +183,32 @@ def plot_loss(epochs, all_loss, model_name, dir_output, loss_name=['Loss', 'Reca
        
 
 if __name__ == '__main__':
-    # hyper args
     parser = argparse.ArgumentParser()
 
+    # config args
+    parser.add_argument("--data_dir", default="/opt/ml/input/data/train", type=str)
+    parser.add_argument("--output_dir", default="output", type=str)
+    parser.add_argument("--data_file", default="train_ratings.csv", type=str)
+    parser.add_argument("--seed", default=42, type=int)
+    parser.add_argument("--num_valid_item", default=3, type=int)
+    parser.add_argument("--save_file_name", default='best_NDCG_Caser.pt' , type=str)
+    parser.add_argument("--topK", default=10, type=int)
+
+    # model args
+    parser.add_argument('--d', default=50, type=int)
+    parser.add_argument('--nv', default=4, type=int)
+    parser.add_argument('--nh', default=16, type=int)
+    parser.add_argument('--drop', default=0.5, type=float)
+    parser.add_argument('--ac_conv', default='relu', type=str)
+    parser.add_argument('--ac_fc', default='relu', type=str)
+    parser.add_argument("--L", default=5, type=int)
+    parser.add_argument("--T", default=3, type=int)
+
+    # hyper args
     parser.add_argument("--batch_size", default=512, type=int)
     parser.add_argument("--learning_rate", default=1e-3, type=float)
     parser.add_argument("--num_neg_samples", default=3, type=int)
     parser.add_argument("--epochs", default=50, type=int)
-
-    # model args
-    parser.add_argument('--d', type=int, default=50)
-    parser.add_argument('--nv', type=int, default=4)
-    parser.add_argument('--nh', type=int, default=16)
-    parser.add_argument('--drop', type=float, default=0.5)
-    parser.add_argument('--ac_conv', type=str, default='relu')
-    parser.add_argument('--ac_fc', type=str, default='relu')
-    parser.add_argument("--L", default=5, type=int)
-    parser.add_argument("--T", default=3, type=int)
-
-    # config args
-    parser.add_argument("--data_dir", default='/opt/ml/paper/RecSys/Data/ml-latest-small', type=str)
-    parser.add_argument("--output_dir", default="output", type=str)
-    parser.add_argument("--data_file", default="ratings.csv", type=str)
-    parser.add_argument("--seed", default=42, type=int)
-    parser.add_argument("--num_valid_item", default=3, type=int)
-
     
     config = parser.parse_args()
 
@@ -214,7 +220,10 @@ if __name__ == '__main__':
     # read file and encode both user_id and item_id #
     config.data_file_path = os.path.join(config.data_dir, config.data_file)
     df_all = pd.read_csv(config.data_file_path)
-    df_all.rename(columns={'userId': 'user_id', 'movieId': 'item_id'}, inplace=True)
+    if 'rating' in df_all.columns.values:
+        df_all = df_all.drop('rating', axis=1)
+    column_list = df_all.columns.values
+    df_all.rename(columns={column_list[0]: 'user_id', column_list[1]: 'item_id', column_list[2]: 'timestamp'}, inplace=True)
     encode_user_item_ids(df_all, inference=False)
     #################################################
 
@@ -246,8 +255,10 @@ if __name__ == '__main__':
         epochs=config.epochs,
         dict_negative_samples=dict_negative_samples,
         num_neg_samples=config.num_neg_samples,
+        topK=config.topK,
         device=device,
-        output=config.output_dir
+        output=config.output_dir,
+        save_file_name=config.save_file_name
         )
 
     trainer.fit()
