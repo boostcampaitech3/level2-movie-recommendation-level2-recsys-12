@@ -46,10 +46,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--data_dir", default="/opt/ml/input/data/train", type=str)
-    parser.add_argument("--output_dir", default="output", type=str)
     parser.add_argument("--data_file", default="train_ratings.csv", type=str)
+    parser.add_argument("--output_dir", default="output", type=str)
     parser.add_argument("--seed", default=42, type=int)
-    parser.add_argument("--save_file_name", default='submossion_Caser.csv', type=str)
     parser.add_argument("--topK", default=10, type=int)
     parser.add_argument('--save_metric', default='ndcg', type=str)
 
@@ -69,6 +68,7 @@ if __name__ == '__main__':
     config.save_metric = config.save_metric.lower()
     assert config.save_metric in ['ndcg', 'recall', 'loss'], "chooes metric among ndcg, recall and loss"
     config.load_file_name = f"best_{config.save_metric}_Caser.pt"
+    config.save_file_name = f"submission_Caser_{config.save_metric}.csv"
 
     set_seed(config.seed)
     check_path(config.output_dir)
@@ -78,8 +78,7 @@ if __name__ == '__main__':
     # read file and encode both user_id and item_id #
     config.data_file_path = os.path.join(config.data_dir, config.data_file)
     df_all = pd.read_csv(config.data_file_path)
-    if 'rating' in df_all.columns.values:
-        df_all = df_all.drop('rating', axis=1)
+    if 'rating' in df_all.columns.values: df_all = df_all.drop('rating', axis=1)
     column_list = df_all.columns.values
     df_all.rename(columns={column_list[0]: 'user_id', column_list[1]: 'item_id', column_list[2]: 'timestamp'}, inplace=True)
     user_encoder, item_encoder = encode_user_item_ids(df_all, inference=True)

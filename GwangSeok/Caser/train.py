@@ -193,19 +193,19 @@ if __name__ == '__main__':
 
     # config args
     parser.add_argument("--data_dir", default="/opt/ml/input/data/train", type=str)
-    parser.add_argument("--output_dir", default="output", type=str)
     parser.add_argument("--data_file", default="train_ratings.csv", type=str)
+    parser.add_argument("--output_dir", default="output", type=str)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--num_valid_item", default=3, type=int)
     parser.add_argument("--topK", default=10, type=int)
 
     # model args
-    parser.add_argument('--d', default=50, type=int)
-    parser.add_argument('--nv', default=4, type=int)
-    parser.add_argument('--nh', default=16, type=int)
-    parser.add_argument('--drop', default=0.5, type=float)
-    parser.add_argument('--ac_conv', default='relu', type=str)
-    parser.add_argument('--ac_fc', default='relu', type=str)
+    parser.add_argument('--d', type=int, default=50)
+    parser.add_argument('--nv', type=int, default=4)
+    parser.add_argument('--nh', type=int, default=16)
+    parser.add_argument('--drop', type=float, default=0.5)
+    parser.add_argument('--ac_conv', type=str, default='relu')
+    parser.add_argument('--ac_fc', type=str, default='relu')
     parser.add_argument("--L", default=5, type=int)
     parser.add_argument("--T", default=3, type=int)
 
@@ -215,9 +215,9 @@ if __name__ == '__main__':
     parser.add_argument("--num_neg_samples", default=3, type=int)
     parser.add_argument("--epochs", default=50, type=int)
     parser.add_argument('--l2', default=1e-6, type=float)
-    parser.add_argument('--patience', default=8, type=int)
+    parser.add_argument('--patience', default=10, type=int)
     parser.add_argument('--save_metric', default='ndcg', type=str)
-
+    
     config = parser.parse_args()
 
     config.save_metric = config.save_metric.lower()
@@ -276,4 +276,4 @@ if __name__ == '__main__':
 
     trainer.fit()
     all_loss = [trainer.loss_list, trainer.recall_list, trainer.ndcg_list]
-    plot_loss(config.epochs, all_loss, 'Caser', config.output_dir)
+    plot_loss(len(trainer.loss_list), all_loss, 'Caser', config.output_dir)
