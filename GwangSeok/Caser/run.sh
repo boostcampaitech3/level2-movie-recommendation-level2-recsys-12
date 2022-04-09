@@ -9,5 +9,5 @@ pwd=$(readlink -f .)
 # '/opt/ml/paper/RecSys/Data/ml-latest-small' || '/opt/ml/input/data/train'
 # 'ratings.csv' || "train_ratings.csv"
 
-nohup /opt/conda/bin/python -u $pwd/train.py --epochs=3 > $pwd/output/trainig.log && \
+nohup /opt/conda/bin/python -u $pwd/train.py > $pwd/output/trainig.log && \
 nohup /opt/conda/bin/python -u $pwd/inference.py > $pwd/output/inference.log &
