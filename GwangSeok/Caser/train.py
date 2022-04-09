@@ -206,6 +206,7 @@ if __name__ == '__main__':
     parser.add_argument("--learning_rate", default=1e-3, type=float)
     parser.add_argument("--num_neg_samples", default=3, type=int)
     parser.add_argument("--epochs", default=50, type=int)
+    parser.add_argument('--l2', default=1e-6, type=float)
     
     config = parser.parse_args()
 
@@ -239,7 +240,7 @@ if __name__ == '__main__':
     # trainer args init #
     model = Caser(len(unique_users), len(unique_items), config)
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.l2)
     #####################
 
     torch.cuda.empty_cache() # if necessary
