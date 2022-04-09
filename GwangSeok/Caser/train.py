@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import os
 
-from utils import set_seed, check_path
+from utils import set_seed, check_path, EarlyStopping
 from data_preprocessing import *
 from dataset import get_dataloader
 from caser import Caser
@@ -23,10 +23,12 @@ class Trainer():
         epochs,
         dict_negative_samples,
         num_neg_samples,
+        save_metric,
         topK,
         device,
         output,
         save_file_name,
+        patience,
         ):
         """
         Args:
@@ -42,17 +44,20 @@ class Trainer():
         self.neg_samples = dict_negative_samples
         self.num_neg_samples = num_neg_samples
         self.device = device
-        self.output = output
-
+        
+        self.early_stopping = EarlyStopping(
+            checkpoint_path=os.path.join(output, save_file_name), 
+            patience=patience,
+            save_metric=save_metric
+            )
+        self.save_metric = save_metric
         self.loss_list = list()
         self.recall_list = list()
         self.ndcg_list = list()
 
-        self.save_file_name = save_file_name
         self.topK = topK
     
     def fit(self):
-        best_ndcg = 0
         epoch_start = torch.cuda.Event(enable_timing=True)
         epoch_end = torch.cuda.Event(enable_timing=True)
 
@@ -79,12 +84,16 @@ class Trainer():
                 f'\t훈련시간: {epoch_start.elapsed_time(epoch_end)/1000:.2f} sec'
             )
 
-            if best_ndcg < avg_ndcg:
-                best_ndcg = avg_ndcg
-                torch.save(self.model.state_dict(), os.path.join(self.output, self.save_file_name))
-                print(f'save ndcg: {best_ndcg:.4f}')
+            if self.save_metric == 'loss': score = avg_loss
+            elif self.save_metric == 'ndcg': score = avg_ndcg
+            else: score = avg_recall
+
+            self.early_stopping(score, self.model)
+            if self.early_stopping.early_stop:
+                print("Early stopping")
+                break
         
-        print('done!')
+        print('finish training!')
 
 
     def _train(self):
@@ -188,7 +197,6 @@ if __name__ == '__main__':
     parser.add_argument("--data_file", default="train_ratings.csv", type=str)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--num_valid_item", default=3, type=int)
-    parser.add_argument("--save_file_name", default='best_NDCG_Caser.pt' , type=str)
     parser.add_argument("--topK", default=10, type=int)
 
     # model args
@@ -207,8 +215,14 @@ if __name__ == '__main__':
     parser.add_argument("--num_neg_samples", default=3, type=int)
     parser.add_argument("--epochs", default=50, type=int)
     parser.add_argument('--l2', default=1e-6, type=float)
-    
+    parser.add_argument('--patience', default=8, type=int)
+    parser.add_argument('--save_metric', default='ndcg', type=str)
+
     config = parser.parse_args()
+
+    config.save_metric = config.save_metric.lower()
+    assert config.save_metric in ['ndcg', 'recall', 'loss'], "chooes metric among ndcg, recall and loss"
+    config.save_file_name = f"best_{config.save_metric}_Caser.pt"
 
     set_seed(config.seed)
     check_path(config.output_dir)
@@ -218,8 +232,7 @@ if __name__ == '__main__':
     # read file and encode both user_id and item_id #
     config.data_file_path = os.path.join(config.data_dir, config.data_file)
     df_all = pd.read_csv(config.data_file_path)
-    if 'rating' in df_all.columns.values:
-        df_all = df_all.drop('rating', axis=1)
+    if 'rating' in df_all.columns.values: df_all = df_all.drop('rating', axis=1)
     column_list = df_all.columns.values
     df_all.rename(columns={column_list[0]: 'user_id', column_list[1]: 'item_id', column_list[2]: 'timestamp'}, inplace=True)
     encode_user_item_ids(df_all, inference=False)
@@ -253,10 +266,12 @@ if __name__ == '__main__':
         epochs=config.epochs,
         dict_negative_samples=dict_negative_samples,
         num_neg_samples=config.num_neg_samples,
+        save_metric=config.save_metric,
         topK=config.topK,
         device=device,
         output=config.output_dir,
-        save_file_name=config.save_file_name
+        save_file_name=config.save_file_name,
+        patience=config.patience
         )
 
     trainer.fit()

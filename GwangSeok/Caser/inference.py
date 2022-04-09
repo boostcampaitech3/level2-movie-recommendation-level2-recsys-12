@@ -49,9 +49,9 @@ if __name__ == '__main__':
     parser.add_argument("--output_dir", default="output", type=str)
     parser.add_argument("--data_file", default="train_ratings.csv", type=str)
     parser.add_argument("--seed", default=42, type=int)
-    parser.add_argument("--load_file_name", default='best_NDCG_Caser.pt', type=str)
     parser.add_argument("--save_file_name", default='submossion_Caser.csv', type=str)
     parser.add_argument("--topK", default=10, type=int)
+    parser.add_argument('--save_metric', default='ndcg', type=str)
 
     # model args
     parser.add_argument('--d', default=50, type=int)
@@ -65,6 +65,10 @@ if __name__ == '__main__':
 
 
     config = parser.parse_args()
+
+    config.save_metric = config.save_metric.lower()
+    assert config.save_metric in ['ndcg', 'recall', 'loss'], "chooes metric among ndcg, recall and loss"
+    config.load_file_name = f"best_{config.save_metric}_Caser.pt"
 
     set_seed(config.seed)
     check_path(config.output_dir)
