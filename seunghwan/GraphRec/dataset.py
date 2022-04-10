@@ -1,5 +1,4 @@
 import os
-from torch import _native_multi_head_self_attention
 from tqdm import tqdm
 import time 
 import pickle
@@ -43,7 +42,7 @@ class GraphRecDataset() :
         self.train_user_graph, self.train_movie_graph = self.__graph_initailize('train')
         self.inference_user_graph, self.inference_movie_graph = self.__graph_initailize('inference')
         self.n_features_user = self.train_user_graph.shape[1]   # inference와 같음
-        self.n_featrues_movie = self.train_movie_graph.shape[1] # inference와 같음
+        self.n_features_movie = self.train_movie_graph.shape[1] # inference와 같음
         
     def __drop_time_add_rating(self, data) :
         data.drop('time', axis=1, inplace=True)
@@ -78,7 +77,7 @@ class GraphRecDataset() :
         
         # load existing files if they exist        
         if self._args.use_exist and os.path.exists(os.path.join(self._dirs.output, f'{data_type}_user_graph.pkl')) and os.path.exists(os.path.join(self._dirs.output, f'{data_type}_movie_graph.pkl')):
-            print('load existing graphs!')
+            print(f'load existing {data_type} graphs!')
             with open(os.path.join(self._dirs.output, 'train_user_graph.pkl'), 'rb') as f :
                 user_graph = pickle.load(f)
             with open(os.path.join(self._dirs.output, 'train_movie_graph.pkl'), 'rb') as f :
@@ -86,7 +85,7 @@ class GraphRecDataset() :
         
         # else initialize
         else :
-            print('graph initializing...')
+            print(f'{data_type} graph initializing...')
             time.sleep(0.3)
             adj_users = np.zeros((self.user_num, self.movie_num), dtype=np.float32)  # user-movie 관계를 나타내기 위한 그래프 행렬
             dgr_users = np.zeros((self.user_num, 1), dtype=np.float32)               # 각 유저의 차수를 나타내기 위한 차수 리스트
@@ -117,10 +116,10 @@ class GraphRecDataset() :
                 pickle.dump(movie_graph, f)
         
         if self._args.use_side_information is True :
-            print('load side information...')
+            print(f'load {data_type} side information...')
             movie_garph = self.__concat_side_information(data=movie_graph, side='movie')
         
-        return lil_matrix(user_graph), lil_matrix(movie_garph)
+        return user_graph, movie_garph
                 
     def __concat_side_information(self, data, side):
         if side == 'movie' :
