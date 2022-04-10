@@ -2,3 +2,41 @@ Use cuda
 encoding...
 done!
 sorted by sequence and make negative smaples per user...
+doen!
+split data to train and test...
+done!
+make sequences...
+done!
+start training...
+Epoch[1/50]	train_loss: 0.2941	recall: 0.0961	NDCG: 0.0660 	훈련시간: 1202.11 sec
+Better performance. Saving model recall: 0.0961 ...
+Epoch[2/50]	train_loss: 0.2168	recall: 0.1093	NDCG: 0.0764 	훈련시간: 1174.05 sec
+Better performance. Saving model recall: 0.1093 ...
+Epoch[3/50]	train_loss: 0.1833	recall: 0.1109	NDCG: 0.0772 	훈련시간: 1177.96 sec
+Better performance. Saving model recall: 0.1109 ...
+Epoch[4/50]	train_loss: 0.1638	recall: 0.1104	NDCG: 0.0775 	훈련시간: 1197.80 sec
+EarlyStopping counter: 1 out of 10
+Epoch[5/50]	train_loss: 0.1525	recall: 0.1113	NDCG: 0.0779 	훈련시간: 1129.24 sec
+Better performance. Saving model recall: 0.1113 ...
+Epoch[6/50]	train_loss: 0.1451	recall: 0.1097	NDCG: 0.0762 	훈련시간: 1182.81 sec
+EarlyStopping counter: 1 out of 10
+Epoch[7/50]	train_loss: 0.1401	recall: 0.1077	NDCG: 0.0751 	훈련시간: 1129.83 sec
+EarlyStopping counter: 2 out of 10
+Epoch[8/50]	train_loss: 0.1368	recall: 0.1072	NDCG: 0.0750 	훈련시간: 1189.28 sec
+EarlyStopping counter: 3 out of 10
+Epoch[9/50]	train_loss: 0.1340	recall: 0.1094	NDCG: 0.0766 	훈련시간: 1140.18 sec
+EarlyStopping counter: 4 out of 10
+Epoch[10/50]	train_loss: 0.1319	recall: 0.1080	NDCG: 0.0751 	훈련시간: 1183.49 sec
+EarlyStopping counter: 5 out of 10
+Epoch[11/50]	train_loss: 0.1302	recall: 0.1045	NDCG: 0.0731 	훈련시간: 1188.77 sec
+EarlyStopping counter: 6 out of 10
+Epoch[12/50]	train_loss: 0.1289	recall: 0.1043	NDCG: 0.0731 	훈련시간: 1126.04 sec
+EarlyStopping counter: 7 out of 10
+Epoch[13/50]	train_loss: 0.1279	recall: 0.1048	NDCG: 0.0728 	훈련시간: 1189.39 sec
+EarlyStopping counter: 8 out of 10
+Epoch[14/50]	train_loss: 0.1269	recall: 0.1030	NDCG: 0.0714 	훈련시간: 1130.13 sec
+EarlyStopping counter: 9 out of 10
+Epoch[15/50]	train_loss: 0.1263	recall: 0.1023	NDCG: 0.0711 	훈련시간: 1184.76 sec
+EarlyStopping counter: 10 out of 10
+Early stopping
+finish training!
