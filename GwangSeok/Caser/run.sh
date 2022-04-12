@@ -6,5 +6,10 @@
 
 # pwd=$(readlink -f .)
 
-nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/train.py --d=100 --save_metric=recall --batch_size=256 --l2=1e-3 --num_valid_item=10 > /opt/ml/competition/GwangSeok/Caser/output/trainig.log && \
-nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/inference.py --d=100 --save_metric=recall > /opt/ml/competition/GwangSeok/Caser/output/inference.log &
+# 1
+nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/train.py --d=100 --save_metric=recall --batch_size=256 --l2=1e-3 --num_valid_item=10 > /opt/ml/competition/GwangSeok/Caser/logs/trainig.log && \
+nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/inference.py --d=100 --save_metric=recall > /opt/ml/competition/GwangSeok/Caser/logs/inference.log &
+
+# 2
+nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/train.py --d=100 --save_metric=recall --output_dir=output2 --batch_size=256 --l2=1e-3 > /opt/ml/competition/GwangSeok/Caser/logs/trainig_2.log && \
+nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/inference.py --d=100 --save_metric=recall --output_dir=output2 > /opt/ml/competition/GwangSeok/Caser/logs/inference_2.log &

@@ -1,0 +1,27 @@
+output created
+Use cuda
+encoding...
+done!
+sorted by sequence and make negative smaples per user...
+doen!
+split data to train and test...
+done!
+make sequences...
+done!
+start training...
+Epoch[1/50]	train_loss: 0.2946	recall: 0.0810	NDCG: 0.0867 	훈련시간: 1218.35 sec
+Better performance. Saving model recall: 0.0810 ...
+Epoch[2/50]	train_loss: 0.2177	recall: 0.0906	NDCG: 0.0975 	훈련시간: 1262.74 sec
+Better performance. Saving model recall: 0.0906 ...
+Epoch[3/50]	train_loss: 0.1842	recall: 0.0918	NDCG: 0.0987 	훈련시간: 1268.76 sec
+Better performance. Saving model recall: 0.0918 ...
+Epoch[4/50]	train_loss: 0.1643	recall: 0.0918	NDCG: 0.0986 	훈련시간: 1196.34 sec
+EarlyStopping counter: 1 out of 10
+Epoch[5/50]	train_loss: 0.1524	recall: 0.0915	NDCG: 0.0982 	훈련시간: 1262.07 sec
+EarlyStopping counter: 2 out of 10
+Epoch[6/50]	train_loss: 0.1448	recall: 0.0916	NDCG: 0.0987 	훈련시간: 1171.79 sec
+EarlyStopping counter: 3 out of 10
+Epoch[7/50]	train_loss: 0.1395	recall: 0.0896	NDCG: 0.0962 	훈련시간: 1260.14 sec
+EarlyStopping counter: 4 out of 10
+Epoch[8/50]	train_loss: 0.1358	recall: 0.0890	NDCG: 0.0957 	훈련시간: 1183.72 sec
+EarlyStopping counter: 5 out of 10
