@@ -23,6 +23,7 @@ class Trainer():
         epochs,
         dict_negative_samples,
         num_neg_samples,
+        num_valid_neg_samples,
         save_metric,
         topK,
         device,
@@ -43,6 +44,7 @@ class Trainer():
         self.valid_loader = valid_dataloader
         self.neg_samples = dict_negative_samples
         self.num_neg_samples = num_neg_samples
+        self.num_valid_neg_samples = num_valid_neg_samples
         self.device = device
         
         self.early_stopping = EarlyStopping(
@@ -135,7 +137,7 @@ class Trainer():
                 users = users.to(self.device)
                 sequence = sequence.to(self.device)
                 target_pos = sequence_target.to(self.device)
-                all_neg_targets = self._get_neg_smaples(users).to(self.device)
+                all_neg_targets = self._get_neg_smaples(users, self.num_valid_neg_samples).to(self.device)
 
                 input_targets = torch.cat((target_pos, all_neg_targets), dim=-1)
                 predict = self.model(users, sequence, input_targets, for_pred=True)
@@ -152,7 +154,7 @@ class Trainer():
         return avg_hr, avg_ndcg
 
     
-    def _get_neg_smaples(self, users, num_neg=1e9):
+    def _get_neg_smaples(self, users, num_neg):
         neg_items = list()
         users = users.detach().cpu().numpy()
         for user in users:
@@ -197,6 +199,7 @@ if __name__ == '__main__':
     parser.add_argument("--output_dir", default="output", type=str)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--num_valid_item", default=3, type=int)
+    parser.add_argument("--num_valid_neg_samples", default=1e9, type=int)
     parser.add_argument("--topK", default=10, type=int)
 
     # model args
@@ -266,6 +269,7 @@ if __name__ == '__main__':
         epochs=config.epochs,
         dict_negative_samples=dict_negative_samples,
         num_neg_samples=config.num_neg_samples,
+        num_valid_neg_samples=config.num_valid_neg_samples,
         save_metric=config.save_metric,
         topK=config.topK,
         device=device,

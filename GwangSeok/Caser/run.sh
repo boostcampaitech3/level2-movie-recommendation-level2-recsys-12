@@ -6,8 +6,5 @@
 
 # pwd=$(readlink -f .)
 
-# '/opt/ml/paper/RecSys/Data/ml-latest-small' || '/opt/ml/input/data/train'
-# 'ratings.csv' || "train_ratings.csv"
-
-nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/train.py --batch_size=256 --l2=1e-5 --d=100 --save_metric=recall > /opt/ml/competition/GwangSeok/Caser/output/trainig.log && \
+nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/train.py --d=100 --save_metric=recall --batch_size=256 --l2=1e-3 --num_valid_item=10 > /opt/ml/competition/GwangSeok/Caser/output/trainig.log && \
 nohup /opt/conda/bin/python -u /opt/ml/competition/GwangSeok/Caser/inference.py --d=100 --save_metric=recall > /opt/ml/competition/GwangSeok/Caser/output/inference.log &
