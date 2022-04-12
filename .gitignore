@@ -3,3 +3,6 @@ yonghoon/data/
 *.csv
 *.pt
 *.ckpt
+*.json
+yonghoon/VASP/VASP_ML20_1_best*
+yonghoon/VASP/vasp_weight
