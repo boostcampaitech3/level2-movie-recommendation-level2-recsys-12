@@ -25,3 +25,15 @@ Epoch[7/50]	train_loss: 0.1395	recall: 0.0896	NDCG: 0.0962 	훈련시간: 1260.1
 EarlyStopping counter: 4 out of 10
 Epoch[8/50]	train_loss: 0.1358	recall: 0.0890	NDCG: 0.0957 	훈련시간: 1183.72 sec
 EarlyStopping counter: 5 out of 10
+Epoch[9/50]	train_loss: 0.1329	recall: 0.0895	NDCG: 0.0961 	훈련시간: 1253.53 sec
+EarlyStopping counter: 6 out of 10
+Epoch[10/50]	train_loss: 0.1306	recall: 0.0869	NDCG: 0.0932 	훈련시간: 1209.10 sec
+EarlyStopping counter: 7 out of 10
+Epoch[11/50]	train_loss: 0.1287	recall: 0.0867	NDCG: 0.0933 	훈련시간: 1220.05 sec
+EarlyStopping counter: 8 out of 10
+Epoch[12/50]	train_loss: 0.1270	recall: 0.0869	NDCG: 0.0935 	훈련시간: 1244.88 sec
+EarlyStopping counter: 9 out of 10
+Epoch[13/50]	train_loss: 0.1261	recall: 0.0880	NDCG: 0.0944 	훈련시간: 1181.44 sec
+EarlyStopping counter: 10 out of 10
+Early stopping
+finish training!
