@@ -1,0 +1,2 @@
+[NCF 요약](https://hazel-petunia-69f.notion.site/Neural-Collaborative-Filtering-3cbc323bce8049879730016b3bce7dc6)   
+[BPR 요약](https://hazel-petunia-69f.notion.site/BPR-Bayesian-Personalized-Ranking-from-Implicit-Feedback-1e27337351e5417ba8c1077e13a7cb0b)
