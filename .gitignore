@@ -1,3 +1,11 @@
+*/data/
+*/output/
+*/result/
+*/submission/
+*.log
+*.csv
+*.pt
+*.ckpt
 .git
 .ipynb_checkpoints
 __pycache__
