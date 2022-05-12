@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 
 # %%
-burt = pd.read_csv(r"D:\Workspace\Movie_Recommendation\output\burt4Rec_1000history_submission.csv")
-NewNF = pd.read_csv(r"D:\Workspace\level2-movie-recommendation-level2-recsys-12\yonghoon\vasp_submission_upgrade0.1450.csv")
+burt = pd.read_csv(r"D:\Workspace\level2-movie-recommendation-level2-recsys-12\yonghoon\output\burt4Rec_1000history_submission0.0910.csv")
+NewNF = pd.read_csv(r"D:\Workspace\level2-movie-recommendation-level2-recsys-12\yonghoon\output\vasp_submission_upgrade0.1450.csv")
 
 # %%
 topk = 7
@@ -36,7 +36,7 @@ for i in range(len(burt)):
 
 # %%
 pd.DataFrame(result, columns=["user", "item"]).to_csv(
-    "Mix_Burt_vasp_submission.csv", index=False
+    "Mix_Burt_vasp__with_mask_submission.csv", index=False
 )
 
 # %%
