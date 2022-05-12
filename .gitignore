@@ -9,3 +9,6 @@
 .git
 .ipynb_checkpoints
 __pycache__
+*.json
+yonghoon/VASP/VASP_ML20_1_best*
+yonghoon/VASP/vasp_weight
